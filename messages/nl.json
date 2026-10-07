@@ -524,7 +524,7 @@
             "thumbnail": "Bekijk het nummer van de afbeelding",
             "additionalInformation": "Aanvullende informatie",
             "currentStock": "{quantity, number} op voorraad",
-            "backorderQuantity": "{hoeveelheid, aantal} staat in backorder",
+            "backorderQuantity": "{quantity, number} staat in backorder",
             "maxPurchasableQuantity": "De maximale aankoophoeveelheid is {quantity, number}. Pas aan en probeer het opnieuw.",
             "loadingMoreImages": "Meer afbeeldingen laden",
             "imagesLoaded": "{count, plural, =1 {1 afbeelding geladen} other {# afbeeldingen geladen}}",

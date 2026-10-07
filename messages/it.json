@@ -523,7 +523,7 @@
             "decreaseNumber": "Diminuisci numero",
             "thumbnail": "Visualizza numero immagine",
             "additionalInformation": "Informazioni aggiuntive",
-            "currentStock": "{quantità, numero} in magazzino",
+            "currentStock": "{quantity, number} in magazzino",
             "backorderQuantity": "{quantity, number} sarà in arretrato",
             "maxPurchasableQuantity": "La quantità massima acquistabile è {quantity, number}. Modificare i parametri e riprovare.",
             "loadingMoreImages": "Caricamento di altre immagini",
