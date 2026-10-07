@@ -627,7 +627,7 @@
     },
     "Components": {
         "ProductCard": {
-            "moreOffers": "+{count, plural, =1 {# } other {#件の追加オファー、 }}件の追加オファー}"
+            "moreOffers": "+{count, plural, =1 {#件の追加オファー} other {#件の追加オファー}}"
         },
         "Header": {
             "home": "ホーム",

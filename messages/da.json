@@ -429,7 +429,7 @@
         "originalPrice": "Den oprindelige pris var {price}.",
         "currentPrice": "Den aktuelle pris er {price}.",
         "quantityReadyToShip": "{quantity, number} klar til forsendelse",
-        "quantityOnBackorder": "{antal, number} vil være i restordre",
+        "quantityOnBackorder": "{quantity, number} vil være i restordre",
         "partiallyAvailable": "Kun {quantity, number} tilgængelig(e)",
         "CheckoutSummary": {
             "title": "Oversigt",

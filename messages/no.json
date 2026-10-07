@@ -428,9 +428,9 @@
         "cartUpdateInProgress": "Du har en handlekurvoppdatering i gang. Er du sikker på at du vil forlate denne siden? Endringene kan gå tapt.",
         "originalPrice": "Opprinnelig pris var {price}.",
         "currentPrice": "Nåværende pris er {price}.",
-        "quantityReadyToShip": "{antall, number} klar til sending",
-        "quantityOnBackorder": "{antall, nummer} vil være restordre",
-        "partiallyAvailable": "Kun {antall, number} tilgjengelig",
+        "quantityReadyToShip": "{quantity, number} klar til sending",
+        "quantityOnBackorder": "{quantity, number} vil være restordre",
+        "partiallyAvailable": "Kun {quantity, number} tilgjengelig",
         "CheckoutSummary": {
             "title": "Sammendrag",
             "subTotal": "Delsum",

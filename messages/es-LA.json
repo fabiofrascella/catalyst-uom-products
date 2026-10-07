@@ -200,7 +200,7 @@
                 "shippingMethod": "Método de envío",
                 "summaryTotal": "Total",
                 "destination": "Destino",
-                "destinationWithCount": "Destino {número, número}/{total, número}",
+                "destinationWithCount": "Destino {number, number}/{total, number}",
                 "digitalDelivery": "Entrega digital a {email}",
                 "subtotal": "Subtotal",
                 "shipping": "Envío",
@@ -428,9 +428,9 @@
         "cartUpdateInProgress": "Tiene una actualización de carrito en proceso. ¿Estás seguro de que quieres salir de esta página? Es posible que se pierdan sus cambios.",
         "originalPrice": "El precio original era {price}.",
         "currentPrice": "El precio actual es {price}.",
-        "quantityReadyToShip": "{cantidad, número} listo para enviar",
-        "quantityOnBackorder": "{cantidad, número} estará en pedido pendiente",
-        "partiallyAvailable": "Solo {cantidad, número} disponible",
+        "quantityReadyToShip": "{quantity, number} listo para enviar",
+        "quantityOnBackorder": "{quantity, number} estará en pedido pendiente",
+        "partiallyAvailable": "Solo {quantity, number} disponible",
         "CheckoutSummary": {
             "title": "Resumen",
             "subTotal": "Subtotal",
@@ -627,7 +627,7 @@
     },
     "Components": {
         "ProductCard": {
-            "moreOffers": "{count, plural+, =1 {# más} other {# posibilidad | más posibilidades}}"
+            "moreOffers": "+{count, plural, =1 {# oferta más} other {# más ofertas}}"
         },
         "Header": {
             "home": "Inicio",

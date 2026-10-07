@@ -142,7 +142,7 @@
                 "search": "Zoeken"
             },
             "Empty": {
-                "title": "Sorry, geen resultaten voor '{term}'.",
+                "title": "Sorry, geen resultaten voor \"{term}\".",
                 "subtitle": "Probeer een andere zoekopdracht"
             },
             "semanticSearchPlaceholder": "Beschrijf wat je zoekt"
@@ -647,7 +647,7 @@
                 "products": "Producten",
                 "categories": "Categorieën",
                 "brands": "Merken",
-                "noSearchResultsTitle": "Sorry, geen resultaten voor '{term}'.",
+                "noSearchResultsTitle": "Sorry, geen resultaten voor \"{term}\".",
                 "noSearchResultsSubtitle": "Probeer een andere zoekopdracht",
                 "somethingWentWrong": "Er is iets fout gegaan. Probeer het opnieuw.",
                 "inputPlaceholder": "Zoek producten, categorieën, merken...",

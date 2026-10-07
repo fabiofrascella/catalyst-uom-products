@@ -200,7 +200,7 @@
                 "shippingMethod": "Versandmethode",
                 "summaryTotal": "Summe",
                 "destination": "Zielort",
-                "destinationWithCount": "Zielort {Nummer, Nummer}/{Gesamt, Nummer}",
+                "destinationWithCount": "Zielort {number, number}/{total, number}",
                 "digitalDelivery": "Digitale Lieferung an {email}",
                 "subtotal": "Zwischensumme",
                 "shipping": "Versand",
