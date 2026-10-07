@@ -34,7 +34,7 @@ const getLocale = async () => {
   }
 };
 
-export const client = createClient({
+const baseClient = createClient({
   storefrontToken: process.env.BIGCOMMERCE_STOREFRONT_TOKEN ?? '',
   storeHash: process.env.BIGCOMMERCE_STORE_HASH ?? '',
   channelId: process.env.BIGCOMMERCE_CHANNEL_ID,
@@ -79,5 +79,104 @@ export const client = createClient({
 
       redirect('/api/auth/signout');
     }
+  },
+});
+
+type FetchConfig = Parameters<typeof baseClient.fetch>[0];
+
+interface OperationNode {
+  kind: string;
+  operation?: string;
+  directives?: ReadonlyArray<{ name: { value: string } }>;
+}
+
+interface DocumentLike {
+  kind: 'Document';
+  definitions: readonly OperationNode[];
+}
+
+const isDocumentLike = (document: unknown): document is DocumentLike =>
+  typeof document === 'object' &&
+  document !== null &&
+  'kind' in document &&
+  document.kind === 'Document' &&
+  'definitions' in document &&
+  Array.isArray(document.definitions);
+
+// The default locale as resolved by the proxy. Header-only (no I/O), so it can't recurse into
+// `client.fetch`. Returns `undefined` outside a request or when the proxy didn't set it.
+const getForwardedDefaultLocale = async () => {
+  try {
+    const { getForwardedLocaleRouting } = await import('~/i18n/locale-config');
+
+    return (await getForwardedLocaleRouting())?.defaultLocale;
+  } catch {
+    return undefined;
+  }
+};
+
+// The BigCommerce Storefront API ignores the `Accept-Language` header on some channels and keeps
+// resolving the default locale, so translated content never comes back. The
+// `@shopperPreferences(locale: "...")` directive is honoured, so for non-default locales we add it
+// to query operations. Default-locale requests are left untouched.
+const withShopperLocale = async <T>(document: T): Promise<T> => {
+  if (!isDocumentLike(document)) {
+    return document;
+  }
+
+  const locale = await getLocale();
+
+  if (!locale || locale === (await getForwardedDefaultLocale())) {
+    return document;
+  }
+
+  return {
+    ...document,
+    definitions: document.definitions.map((definition) => {
+      if (
+        definition.kind !== 'OperationDefinition' ||
+        definition.operation !== 'query' ||
+        definition.directives?.some(({ name }) => name.value === 'shopperPreferences')
+      ) {
+        return definition;
+      }
+
+      return {
+        ...definition,
+        directives: [
+          ...(definition.directives ?? []),
+          {
+            kind: 'Directive',
+            name: { kind: 'Name', value: 'shopperPreferences' },
+            arguments: [
+              {
+                kind: 'Argument',
+                name: { kind: 'Name', value: 'locale' },
+                value: { kind: 'StringValue', value: locale },
+              },
+            ],
+          },
+        ],
+      };
+    }),
+  };
+};
+
+export const client = new Proxy(baseClient, {
+  get(target, prop) {
+    if (prop === 'fetch') {
+      return async (config: FetchConfig) =>
+        target.fetch({ ...config, document: await withShopperLocale(config.document) });
+    }
+
+    const value: unknown = Reflect.get(target, prop, target);
+
+    if (typeof value === 'function') {
+      const bound: unknown = value.bind(target);
+
+      return bound;
+    }
+
+    return value;
   },
 });
