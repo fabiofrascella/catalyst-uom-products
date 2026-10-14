@@ -762,6 +762,7 @@ function CounterForm({
             <form
               action={action}
               className="contents"
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
                 commitQuantityDraft();
