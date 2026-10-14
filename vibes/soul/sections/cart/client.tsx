@@ -658,6 +658,28 @@ function CounterForm({
     onDelete();
   };
 
+  // The typed quantity is a draft until it's committed (Enter or leaving the field). It
+  // resets whenever the confirmed/optimistic quantity changes, e.g. from the +/- buttons.
+  const [quantityDraft, setQuantityDraft] = useState(lineItem.quantity.toString());
+
+  useEffect(() => {
+    setQuantityDraft(lineItem.quantity.toString());
+  }, [lineItem.quantity]);
+
+  const commitQuantityDraft = () => {
+    const quantity = Number(quantityDraft);
+
+    if (quantityDraft.trim() === '' || !Number.isInteger(quantity) || quantity < 1) {
+      setQuantityDraft(lineItem.quantity.toString());
+
+      return;
+    }
+
+    if (quantity !== lineItem.quantity) {
+      onUpdateQuantity(quantity);
+    }
+  };
+
   const handleUpdateQuantitySubmit = (quantity: number) => (event: FormEvent) => {
     event.preventDefault();
     onUpdateQuantity(quantity);
@@ -737,9 +759,30 @@ function CounterForm({
                 />
               </button>
             </form>
-            <span className="flex w-8 select-none justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cart-focus,hsl(var(--primary)))]">
-              {lineItem.quantity}
-            </span>
+            <form
+              action={action}
+              className="contents"
+              onSubmit={(event) => {
+                event.preventDefault();
+                commitQuantityDraft();
+              }}
+            >
+              <input name="id" type="hidden" value={lineItem.id} />
+              <input name="intent" type="hidden" value="update" />
+              <input
+                aria-label={lineItem.title}
+                className="w-12 bg-transparent text-center [appearance:textfield] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cart-focus,hsl(var(--primary)))] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                inputMode="numeric"
+                min={1}
+                name="quantity"
+                onBlur={commitQuantityDraft}
+                onChange={(event) => setQuantityDraft(event.currentTarget.value)}
+                onFocus={(event) => event.currentTarget.select()}
+                step={1}
+                type="number"
+                value={quantityDraft}
+              />
+            </form>
             <form
               action={action}
               className="contents"
