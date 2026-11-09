@@ -81,16 +81,12 @@ untouched, so Catalyst upgrades merge cleanly.
 
 ## 5. Gotchas we hit
 
-- **Integer quantity** is the root constraint; everything else follows from it.
 - **Min/max purchase quantity** (BigCommerce product settings) are in steps, not display units.
 - **Box size must be a multiple of the step**, or `billed / step` will not be a whole number.
-- **Misconfigured = default PDP.** A typo in `UOM Step` makes `parseUomConfig` return `null`, and the
-  default PDP then shows all custom fields, including the settings.
-- **Product not showing:** it must be assigned to the channel and a category in that channel's
-  tree. A new product is on no channel by default.
+- **A typo in a setting silently falls back to the default PDP**, which then shows every custom
+  field, settings included. Check the page after editing fields.
 - **Other card types** (wishlist, compare) don't load custom fields, so they still show the per-step
   price. Add `customFields` to their fragments to fix.
-- **Discounts/coupons** apply to the per-step price like any product; totals come from BigCommerce.
 - **Analytics** events still report steps as quantity.
 
 ## 6. Checkout (hosted, Script Manager)
