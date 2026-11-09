@@ -39,6 +39,14 @@ export const PhysicalItemFragment = graphql(
       }
       catalogProductWithOptionSelections {
         ...PricingFragment
+        customFields(first: 50) {
+          edges {
+            node {
+              name
+              value
+            }
+          }
+        }
       }
       selectedOptions {
         __typename

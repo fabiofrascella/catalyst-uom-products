@@ -1,3 +1,5 @@
+import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
+import { ResultOf } from 'gql.tada';
 import { Metadata } from 'next';
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 
@@ -11,6 +13,7 @@ import { getCartId } from '~/lib/cart';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { Slot } from '~/lib/makeswift/slot';
+import { parseUomConfig, unitPrice } from '~/lib/uom';
 import { exists } from '~/lib/utils';
 
 import { updateCouponCode } from './_actions/update-coupon-code';
@@ -20,11 +23,13 @@ import { updateShippingInfo } from './_actions/update-shipping-info';
 import { CartViewed } from './_components/cart-viewed';
 import { CheckoutPreconnect } from './_components/checkout-preconnect';
 import {
+  DigitalItemFragment,
   getCart,
   getCurrencyData,
   getPaymentWallets,
   getPaymentWalletWithInitializationData,
   getShippingCountries,
+  PhysicalItemFragment,
 } from './page-data';
 
 interface Props {
@@ -32,6 +37,49 @@ interface Props {
 }
 
 const CHECKOUT_URL = process.env.TRAILING_SLASH !== 'false' ? '/checkout/' : '/checkout';
+
+type CartItem = ResultOf<typeof PhysicalItemFragment> | ResultOf<typeof DigitalItemFragment>;
+
+// Lines sold by unit of measure (custom field UOM = Yes) are priced per display unit, not per step.
+function getUomLine(item: CartItem, taxIncluded: boolean, locale: string) {
+  const product =
+    item.__typename === 'CartPhysicalItem' ? item.catalogProductWithOptionSelections : null;
+  const config = product ? parseUomConfig(removeEdgesAndNodes(product.customFields)) : null;
+  const stepPrice = (taxIncluded ? product?.pricesIncludingTax : product?.pricesExcludingTax)
+    ?.price;
+
+  if (!config || !stepPrice) {
+    return undefined;
+  }
+
+  return { config, pricePerStep: stepPrice.value, currencyCode: stepPrice.currencyCode, locale };
+}
+
+function getLinePrice(
+  item: CartItem,
+  uom: ReturnType<typeof getUomLine>,
+  taxIncluded: boolean,
+  format: Awaited<ReturnType<typeof getFormatter>>,
+): Price {
+  if (uom) {
+    const perUnit = format.number(unitPrice(uom.pricePerStep, uom.config), {
+      style: 'currency',
+      currency: uom.currencyCode,
+    });
+
+    return `${perUnit} / ${uom.config.unit}`;
+  }
+
+  const catalogProduct = item.catalogProductWithOptionSelections;
+
+  return (
+    (catalogProduct && pricesTransformer(catalogProduct, format, taxIncluded ? 'INC' : 'EX')) ??
+    format.number(item.listPrice.value, {
+      style: 'currency',
+      currency: item.listPrice.currencyCode,
+    })
+  );
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -233,19 +281,16 @@ export default async function Cart({ params }: Props) {
       }
     }
 
-    const catalogProduct = item.catalogProductWithOptionSelections;
-    const price: Price =
-      (catalogProduct && pricesTransformer(catalogProduct, format, taxIncluded ? 'INC' : 'EX')) ??
-      format.number(item.listPrice.value, {
-        style: 'currency',
-        currency: item.listPrice.currencyCode,
-      });
+    const uom = getUomLine(item, taxIncluded, locale);
+
+    const price = getLinePrice(item, uom, taxIncluded, format);
 
     return {
       typename: item.__typename,
       id: item.entityId,
       quantity: item.quantity,
       price,
+      uom,
       subtitle: item.selectedOptions
         .map((option) => {
           switch (option.__typename) {

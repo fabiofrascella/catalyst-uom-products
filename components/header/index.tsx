@@ -1,3 +1,4 @@
+import { removeEdgesAndNodes } from '@bigcommerce/catalyst-client';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { cache } from 'react';
 
@@ -13,6 +14,7 @@ import { getLocaleRouting } from '~/i18n/locale-config';
 import { getCartId } from '~/lib/cart';
 import { getPreferredCurrencyCode } from '~/lib/currency';
 import { SiteHeader as HeaderSection } from '~/lib/makeswift/components/site-header';
+import { parseUomConfig } from '~/lib/uom';
 
 import { search } from './_actions/search';
 import { switchCurrency } from './_actions/switch-currency';
@@ -26,6 +28,19 @@ const GetCartCountQuery = graphql(`
         entityId
         lineItems {
           totalQuantity
+          physicalItems {
+            quantity
+            catalogProductWithOptionSelections {
+              customFields(first: 50) {
+                edges {
+                  node {
+                    name
+                    value
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -45,7 +60,20 @@ const getCartCount = cache(async (cartId: string, customerAccessToken?: string) 
     },
   });
 
-  return response.data.site.cart?.lineItems.totalQuantity ?? null;
+  const lineItems = response.data.site.cart?.lineItems;
+
+  if (!lineItems) {
+    return null;
+  }
+
+  // A line sold by unit of measure counts as one item, not as its number of steps.
+  return lineItems.physicalItems.reduce((total, item) => {
+    const fields = item.catalogProductWithOptionSelections
+      ? removeEdgesAndNodes(item.catalogProductWithOptionSelections.customFields)
+      : [];
+
+    return parseUomConfig(fields) ? total - item.quantity + 1 : total;
+  }, lineItems.totalQuantity);
 });
 
 const getHeaderLinks = cache(async (customerAccessToken?: string, currencyCode?: CurrencyCode) => {

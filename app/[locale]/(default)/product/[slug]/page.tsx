@@ -17,6 +17,7 @@ import { getMakeswiftPageMetadata } from '~/lib/makeswift';
 import { ProductDetail } from '~/lib/makeswift/components/product-detail';
 import { getRecaptchaSiteKey } from '~/lib/recaptcha';
 import { getMetadataAlternates } from '~/lib/seo/canonical';
+import { parseUomConfig } from '~/lib/uom';
 
 import { addToCart } from './_actions/add-to-cart';
 import { getMoreProductImages } from './_actions/get-more-images';
@@ -25,6 +26,7 @@ import { ProductAnalyticsProvider } from './_components/product-analytics-provid
 import { ProductSchema } from './_components/product-schema';
 import { ProductViewed } from './_components/product-viewed';
 import { Reviews } from './_components/reviews';
+import { UomProductDetail } from './_components/uom-product-detail';
 import { WishlistButton } from './_components/wishlist-button';
 import { WishlistButtonForm } from './_components/wishlist-button/form';
 import {
@@ -108,6 +110,23 @@ export default async function Product({ params, searchParams }: Props) {
 
   if (!baseProduct) {
     return notFound();
+  }
+
+  // Products with custom field UOM = Yes use the unit-of-measure PDP template instead.
+  const uomConfig = parseUomConfig(removeEdgesAndNodes(baseProduct.customFields));
+
+  if (uomConfig) {
+    return (
+      <UomProductDetail
+        brandName={baseProduct.brand?.name}
+        config={uomConfig}
+        customerAccessToken={customerAccessToken}
+        description={baseProduct.description}
+        name={baseProduct.name}
+        productId={productId}
+        taxDisplay={taxDisplay}
+      />
+    );
   }
 
   const streamableProduct = Streamable.from(async () => {

@@ -29,6 +29,7 @@ import { StickySidebarLayout } from '@/vibes/soul/sections/sticky-sidebar-layout
 import { useB2BQuoteEnabled } from '~/b2b/use-b2b-quote-enabled';
 import { useEvents } from '~/components/analytics/events';
 import { Image } from '~/components/image';
+import { calculateUom, formatAmount, fromDisplayUnit, type UomConfig } from '~/lib/uom';
 
 import { AddCartToQuoteButton } from './add-cart-to-quote-button';
 import { CouponCodeForm, CouponCodeFormState } from './coupon-code-form';
@@ -46,6 +47,15 @@ interface CartLineIteminventoryMessages {
   backorderMessage?: string;
 }
 
+// Present on lines sold by unit of measure. Cart quantity is a number of steps (see ~/lib/uom).
+export interface CartLineItemUom {
+  config: UomConfig;
+  /** Price of one step, in `currencyCode`. */
+  pricePerStep: number;
+  currencyCode: string;
+  locale: string;
+}
+
 export interface CartLineItem {
   typename: string;
   id: string;
@@ -56,6 +66,7 @@ export interface CartLineItem {
   price: Price;
   href?: string;
   inventoryMessages?: CartLineIteminventoryMessages;
+  uom?: CartLineItemUom;
 }
 
 export interface CartGiftCertificateLineItem extends CartLineItem {
@@ -477,7 +488,10 @@ export function CartClient<LineItem extends CartLineItem>({
       return pending?.intent === 'update' ? { ...item, quantity: pending.quantity } : item;
     });
 
-  const displayTotalQuantity = displayLineItems.reduce((total, item) => total + item.quantity, 0);
+  const displayTotalQuantity = displayLineItems.reduce(
+    (total, item) => total + (item.uom ? 1 : item.quantity),
+    0,
+  );
 
   if (displayTotalQuantity === 0) {
     return <CartEmptyState {...emptyState} />;
@@ -660,23 +674,33 @@ function CounterForm({
 
   // The typed quantity is a draft until it's committed (Enter or leaving the field). It
   // resets whenever the confirmed/optimistic quantity changes, e.g. from the +/- buttons.
-  const [quantityDraft, setQuantityDraft] = useState(lineItem.quantity.toString());
+  // UOM lines show and accept the amount in the display unit (e.g. sqm); cart quantity is steps.
+  const { uom } = lineItem;
+  const quantityStep = uomQuantityStep(uom);
+  const toDraft = (cartQuantity: number) => quantityToDraft(cartQuantity, uom);
+
+  const [quantityDraft, setQuantityDraft] = useState(toDraft(lineItem.quantity));
 
   useEffect(() => {
-    setQuantityDraft(lineItem.quantity.toString());
+    setQuantityDraft(toDraft(lineItem.quantity));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineItem.quantity]);
 
   const commitQuantityDraft = () => {
-    const quantity = Number(quantityDraft);
+    const typed = Number(quantityDraft);
+    const quantity = draftToQuantity(typed, uom);
 
     if (quantityDraft.trim() === '' || !Number.isInteger(quantity) || quantity < 1) {
-      setQuantityDraft(lineItem.quantity.toString());
+      setQuantityDraft(toDraft(lineItem.quantity));
 
       return;
     }
 
     if (quantity !== lineItem.quantity) {
       onUpdateQuantity(quantity);
+    } else {
+      // Typed amount rounded to the current quantity (e.g. to the same box count): normalise it.
+      setQuantityDraft(toDraft(lineItem.quantity));
     }
   };
 
@@ -732,26 +756,26 @@ function CounterForm({
             <form
               action={action}
               className="contents"
-              onSubmit={handleUpdateQuantitySubmit(lineItem.quantity - 1)}
+              onSubmit={handleUpdateQuantitySubmit(lineItem.quantity - quantityStep)}
             >
               <input name="id" type="hidden" value={lineItem.id} />
               <input name="intent" type="hidden" value="update" />
-              <input name="quantity" type="hidden" value={lineItem.quantity - 1} />
+              <input name="quantity" type="hidden" value={lineItem.quantity - quantityStep} />
               <button
                 aria-label={decrementLabel}
                 className={clsx(
                   'group rounded-l-lg bg-[var(--cart-counter-background,hsl(var(--background)))] p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cart-focus,hsl(var(--primary)))] disabled:cursor-not-allowed',
-                  lineItem.quantity === 1
+                  lineItem.quantity - quantityStep < 1
                     ? 'opacity-50'
                     : 'hover:bg-[var(--cart-counter-background-hover,hsl(var(--contrast-100)/50%))]',
                 )}
-                disabled={lineItem.quantity === 1}
+                disabled={lineItem.quantity - quantityStep < 1}
                 type="submit"
               >
                 <Minus
                   className={clsx(
                     'text-[var(--cart-counter-icon,hsl(var(--contrast-300)))] transition-colors duration-300',
-                    lineItem.quantity !== 1 &&
+                    lineItem.quantity - quantityStep >= 1 &&
                       'group-hover:text-[var(--cart-counter-icon-hover,hsl(var(--foreground)))]',
                   )}
                   size={18}
@@ -772,26 +796,34 @@ function CounterForm({
               <input name="intent" type="hidden" value="update" />
               <input
                 aria-label={lineItem.title}
-                className="w-12 bg-transparent text-center [appearance:textfield] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cart-focus,hsl(var(--primary)))] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                inputMode="numeric"
-                min={1}
+                className={clsx(
+                  uom ? 'w-20' : 'w-12',
+                  'bg-transparent text-center [appearance:textfield] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--cart-focus,hsl(var(--primary)))] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+                )}
+                inputMode={uom ? 'decimal' : 'numeric'}
+                min={uom ? uom.config.step : 1}
                 name="quantity"
                 onBlur={commitQuantityDraft}
                 onChange={(event) => setQuantityDraft(event.currentTarget.value)}
                 onFocus={(event) => event.currentTarget.select()}
-                step={1}
+                step={uom ? uom.config.step : 1}
                 type="number"
                 value={quantityDraft}
               />
+              {uom ? (
+                <span className="pr-1 text-sm text-[var(--cart-subtext-text,hsl(var(--contrast-500)))]">
+                  {uom.config.unit}
+                </span>
+              ) : null}
             </form>
             <form
               action={action}
               className="contents"
-              onSubmit={handleUpdateQuantitySubmit(lineItem.quantity + 1)}
+              onSubmit={handleUpdateQuantitySubmit(lineItem.quantity + quantityStep)}
             >
               <input name="id" type="hidden" value={lineItem.id} />
               <input name="intent" type="hidden" value="update" />
-              <input name="quantity" type="hidden" value={lineItem.quantity + 1} />
+              <input name="quantity" type="hidden" value={lineItem.quantity + quantityStep} />
               <button
                 aria-label={incrementLabel}
                 className={clsx(
@@ -823,6 +855,7 @@ function CounterForm({
             </button>
           </form>
         </div>
+        {uom ? <UomLineSummary lineItem={lineItem} uom={uom} /> : null}
         {lineItem.inventoryMessages?.outOfStockMessage != null && (
           <span className="text-xs/5 font-light text-red-500">
             {lineItem.inventoryMessages.outOfStockMessage}
@@ -923,4 +956,46 @@ function SubmitButton({
       type="submit"
     />
   );
+}
+
+function UomLineSummary({ lineItem, uom }: { lineItem: CartLineItem; uom: CartLineItemUom }) {
+  const { config } = uom;
+  const billed = lineItem.quantity * config.step;
+  const boxes =
+    config.rounding === 'box' && config.boxSize ? Math.round(billed / config.boxSize) : undefined;
+  const total = new Intl.NumberFormat(uom.locale, {
+    style: 'currency',
+    currency: uom.currencyCode,
+  }).format(lineItem.quantity * uom.pricePerStep);
+
+  return (
+    <span className="mb-1 text-xs/5 font-light">
+      {boxes !== undefined ? `${boxes} ${boxes === 1 ? 'box' : 'boxes'} · ` : ''}
+      {formatAmount(billed)} {config.unit}
+      {config.altUnit && config.altFactor
+        ? ` (${formatAmount(fromDisplayUnit(billed, config.altUnit, config))} ${config.altUnit})`
+        : ''}
+      {' · '}
+      <span className="font-medium">{total}</span>
+    </span>
+  );
+}
+
+// Cart quantity change for one press of +/-: one box, one display unit, or one plain item.
+function uomQuantityStep(uom?: CartLineItemUom) {
+  if (!uom) {
+    return 1;
+  }
+
+  const size = uom.config.rounding === 'box' ? (uom.config.boxSize ?? 1) : 1;
+
+  return Math.max(1, Math.round(size / uom.config.step));
+}
+
+function quantityToDraft(cartQuantity: number, uom?: CartLineItemUom) {
+  return uom ? formatAmount(cartQuantity * uom.config.step) : String(cartQuantity);
+}
+
+function draftToQuantity(typed: number, uom?: CartLineItemUom) {
+  return uom ? (calculateUom(typed, uom.config.unit, uom.config)?.cartQuantity ?? 0) : typed;
 }

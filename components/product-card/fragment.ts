@@ -46,6 +46,14 @@ export const ProductCardFragment = graphql(
           }
         }
       }
+      customFields(first: 50) {
+        edges {
+          node {
+            name
+            value
+          }
+        }
+      }
       featuredPromotions {
         edges {
           node {
