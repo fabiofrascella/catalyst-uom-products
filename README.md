@@ -21,6 +21,24 @@ By choosing Catalyst, you'll have a fully-functional storefront within a few sec
 up APIs or building SEO, Accessibility, and Performance-optimized ecommerce components you've probably written many
 times before. You can instead go straight to work building your brand and making this your own.
 
+## This fork: unit-of-measure (UOM) products
+
+This repository adds support for products sold by amount instead of item count: area (sqm/sqft), volume
+(L/gal), weight (kg/lb) and boxes. Behaviour is driven by product custom fields. When a product has
+`UOM` = `Yes`, it uses a dedicated PDP template; every other product uses the default Catalyst PDP.
+
+- Shoppers type an amount in either unit and see the price per unit (e.g. £45.00 / sqm).
+- Box products round up to whole boxes; weight and volume products add the exact amount.
+- The product list, cart, header count and hosted-checkout summary all show UOM values.
+- Works within BigCommerce's whole-number cart quantities: the product price is the price of one
+  step and the cart quantity is the number of steps.
+
+Docs:
+
+- [Developer cheat sheet](docs/uom-cheatsheet.md): how it is built and how to replicate it.
+- Store manager guide: the custom fields and how to set up products (see the cheat sheet, section 2).
+- Core logic and tests: [`lib/uom`](lib/uom). Checkout script: [`scripts/checkout-uom-summary.js`](scripts/checkout-uom-summary.js).
+
 ## Demo
 
 - [Catalyst Demo](https://catalyst-demo.site)
